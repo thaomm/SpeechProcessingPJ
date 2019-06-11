@@ -1,9 +1,14 @@
+import sys
 import datetime
 from datetime import timedelta
 from datetime import date
 import Speech_to_text
 import Text_to_speech
 from lunardate import *
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
 keywords = ["today", "lunar", "yesterday", "tomorrow", "month", "year", "time", "hour", "capital", "country", "until"]
 
 countries = {
@@ -95,9 +100,9 @@ countries = {
 }
 
 events_solar = {
-    "Chrismas": (24, 5),
+    "Christmas holiday": (24, 5),
     "New Year": (1, 1),
-    "Valentine": (14, 2),
+    "Valentine's day": (14, 2),
     "Halloween": (31, 10),
     "May Day": (1, 5),
     "Women's day": (8, 3),
@@ -115,30 +120,101 @@ events_lunar = {
     "Duanwu Festival": (5, 5),
 }
 
-def script():
-    Text_to_speech.tts("Choose your input. 1 for text and 2 for speak")
-    method = input("Type of input: 1. Text /  2. Speak\n")
-    ask = ""
-    if method == "1":
-        Text_to_speech.tts("Type your question")
-        ask = input("Question?\n")
-    elif method != "1" and method != "2":
-        Text_to_speech.tts("Type again")
-        print("Type again!!!!")
-        script()
-    elif method == "2":
-     ask = str(Speech_to_text.stt())
-    print("Ask: " + ask)
-    data = ask.split()
+answer = "No answer"
+ask = ""
+type = 0
+class App(QWidget):
+
+    global answer
+    global ask
+    def __init__(self):
+        super().__init__()
+        self.title = 'Man Minh Thao - 16020282'
+        self.left = 500
+        self.top = 100
+        self.width = 440
+        self.height = 480
+        self.initUI()
+
+
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+
+        #Title
+        self.label = QLabel("<strong style='font-size:25px'>Ask and answer with voice</strong>", self)
+        self.label.move(50, 20)
+
+        self.category = QLabel("<strong style='font-size:15px'>Category:</strong>\n" +
+                               "<ul>- Date and time (Solar and Lunar)\n</ul>" +
+                               "<ul>- Holidays and countdown (Solar and Lunar)</ul>\n" +
+                               "<ul>- Countries and its Capital</ul>", self)
+        self.category.move(60, 60)
+
+        button = QPushButton("Start record", self)
+        button.move(190, 160)
+        button.clicked.connect(self.onClick)
+
+        self.question = QLabel("<font color='grey' style='font-size:17px'>Your answer goes here...</font>", self)
+        self.question.move(60, 230)
+
+        self.textbox = QLineEdit(self)
+        self.textbox.move(60, 190)
+        self.textbox.resize(280,40)
+
+        self.buttontext = QPushButton("Run ", self)
+        self.buttontext.move(340, 200)
+        self.buttontext.clicked.connect(self.onClick2)
+
+        self.again = QPushButton("Again?", self)
+        self.again.move(190, 260)
+        self.again.clicked.connect(self.onClick3)
+        self.again.setVisible(0)
+
+        self.show()
+
+    @pyqtSlot()
+    def onClick(self):
+        asking = askWvoice()
+        answer = script(asking)
+        self.textbox.setText(asking)
+        self.question.setText(answer)
+        Text_to_speech.tts(answer)
+        self.again.setVisible(1)
+        Text_to_speech.tts("again?")
+
+    def onClick2(self):
+        ask = self.textbox.text()
+        answer = script(ask)
+        self.question.setText(answer)
+        Text_to_speech.tts(answer)
+        self.again.setVisible(1)
+        Text_to_speech.tts("again?")
+
+    def onClick3(self):
+        self.textbox.setText("")
+        self.question.setText("<font color='grey' style='font-size:17px'>Your answer goes here...</font>")
+        self.again.setVisible(0)
+
+
+def askWvoice():
+    print("say something")
+    ask = str(Speech_to_text.stt())
+    print(ask)
+    return ask
+
+
+def script(ask_):
+    print(ask_)
+    data = ask_.split()
     keys = ""
     for i in keywords:
         for j in data:
             if i == j:
                 keys = i
                 break
-    print("Keys: " + keys)
-
     currtime = datetime.datetime.now()
+    print(keys)
     answer = "No answer"
     def date_form(time):
         return time.strftime("%A") + ", " + time.strftime("%d") + " of " + time.strftime("%B") + ", " + time.strftime("%Y")
@@ -167,8 +243,9 @@ def script():
         flag = 0
         # for i in data:
         for x,y in events_solar.items():
-            if ask.find(x) != -1:
+            if ask_.find(x) != -1:
                 event = x
+                print(x)
                 flag = 1
                 if y[1] <= currtime.month:
                     if y[0] <= currtime.day:
@@ -182,7 +259,7 @@ def script():
                 answer = str(distance.days) + " days left before the next " + str(x)
                 break
         for x,y in events_lunar.items():
-            if ask.find(x) != -1:
+            if ask_.find(x) != -1:
                 event = x
                 flag = 1
                 if y[1] <= LunarDate.today().month:
@@ -214,7 +291,7 @@ def script():
             answer = "There is no Capital or Country has this name"
     else:
         for x,y in events_solar.items():
-            if ask.find(x) != -1:
+            if ask_.find(x) != -1:
                 event = x
                 flag = 1
                 if y[1] <= currtime.month:
@@ -226,7 +303,7 @@ def script():
                 answer = "The next " + str(x) + " is occurring in " + date_form(eventday)
                 break
         for x,y in events_lunar.items():
-            if ask.find(x) != -1:
+            if ask_.find(x) != -1:
                 event = x
                 flag = 1
                 if y[1] <= LunarDate.today().month:
@@ -240,5 +317,9 @@ def script():
             answer = "The event's name is not available"
 
     print(answer)
-    Text_to_speech.tts(answer)
+    return answer
 
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = App()
+    sys.exit(app.exec_())
